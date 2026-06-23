@@ -8,7 +8,7 @@ import { Footer } from '@/components/Footer';
 import { SearchBar } from '@/components/portal/SearchBar';
 import { GroundCard } from '@/components/portal/GroundCard';
 import { AMENITIES, GROUND_TYPE_LABELS } from '@/lib/amenities';
-import { fetchCities, fetchGroundsForBrowse } from '@/lib/queries';
+import { fetchCities, fetchGroundsForBrowse, fetchRatingsMap, type GroundRating } from '@/lib/queries';
 import type { GroundType, GroundWithTenant } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ function TurfsBrowseInner() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [grounds, setGrounds] = useState<GroundWithTenant[] | null>(null);
+  const [ratings, setRatings] = useState<Map<string, GroundRating>>(new Map());
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +47,17 @@ function TurfsBrowseInner() {
       groundType: groundType ?? undefined,
       amenities: amenities.length ? amenities : undefined,
     })
-      .then(setGrounds)
+      .then(async (rows) => {
+        setGrounds(rows);
+        // Fire-and-forget ratings fetch. Failure here shouldn't block the
+        // listing — ratings just won't show up.
+        try {
+          const map = await fetchRatingsMap(rows.map((r) => r.id));
+          setRatings(map);
+        } catch {
+          setRatings(new Map());
+        }
+      })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, [query, city, groundType, amenities]);
@@ -219,9 +230,17 @@ function TurfsBrowseInner() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {visible.map((g) => (
-                <GroundCard key={g.id} ground={g} />
-              ))}
+              {visible.map((g) => {
+                const r = ratings.get(g.id);
+                return (
+                  <GroundCard
+                    key={g.id}
+                    ground={g}
+                    rating={r?.avg_rating}
+                    reviewCount={r?.review_count}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

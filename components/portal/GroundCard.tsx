@@ -3,9 +3,18 @@ import { MapPin } from 'lucide-react';
 import type { GroundWithTenant } from '@/lib/types';
 import { formatCurrency } from '@/lib/format';
 import { GROUND_TYPE_LABELS, amenityByKey } from '@/lib/amenities';
+import { StarRating } from './StarRating';
 
 // Card shown on the /turfs browse grid. Click → detail page.
-export function GroundCard({ ground }: { ground: GroundWithTenant }) {
+export function GroundCard({
+  ground,
+  rating,
+  reviewCount,
+}: {
+  ground: GroundWithTenant;
+  rating?: number;
+  reviewCount?: number;
+}) {
   const href = `/turfs/${ground.tenant.slug}/${ground.id}`;
   const cover = ground.photos?.[0] ?? ground.image_url ?? null;
   const topAmenities = (ground.amenities ?? []).slice(0, 3);
@@ -37,6 +46,13 @@ export function GroundCard({ ground }: { ground: GroundWithTenant }) {
             {GROUND_TYPE_LABELS[ground.ground_type] ?? ground.ground_type}
           </span>
         </div>
+        {rating != null && reviewCount && reviewCount > 0 && (
+          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-ink-950/80 backdrop-blur">
+            <StarRating value={rating} size={11} />
+            <span className="text-paper text-[11px] font-bold">{rating.toFixed(1)}</span>
+            <span className="text-ink-400 text-[10px]">({reviewCount})</span>
+          </div>
+        )}
       </div>
 
       <div className="p-4">
