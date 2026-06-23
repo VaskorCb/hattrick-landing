@@ -11,13 +11,14 @@ import {
   MapPin,
   ReceiptText,
   User,
+  X,
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/Button';
 import { useSession } from '@/lib/useSession';
 import { signOut } from '@/lib/auth';
-import { fetchMyBookings, type MyBookingRow } from '@/lib/queries';
+import { cancelMyBooking, fetchMyBookings, type MyBookingRow } from '@/lib/queries';
 import { formatCurrency, formatDate, formatTime } from '@/lib/format';
 
 export default function AccountPage() {
@@ -27,6 +28,29 @@ export default function AccountPage() {
   const [bookings, setBookings] = useState<MyBookingRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+
+  const refreshBookings = async () => {
+    try {
+      const next = await fetchMyBookings();
+      setBookings(next);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    if (!confirm('Cancel this booking? The slot will be released for others.')) return;
+    setCancelingId(id);
+    try {
+      await cancelMyBooking(id);
+      await refreshBookings();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to cancel');
+    } finally {
+      setCancelingId(null);
+    }
+  };
 
   // Redirect to login if not signed in.
   useEffect(() => {
@@ -36,10 +60,8 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    fetchMyBookings()
-      .then(setBookings)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
-      .finally(() => setLoading(false));
+    refreshBookings().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const handleSignOut = async () => {
@@ -117,7 +139,12 @@ export default function AccountPage() {
               ) : (
                 <div className="space-y-3">
                   {upcoming.map((b) => (
-                    <BookingRow key={b.id} b={b} />
+                    <BookingRow
+                      key={b.id}
+                      b={b}
+                      onCancel={() => handleCancel(b.id)}
+                      canceling={cancelingId === b.id}
+                    />
                   ))}
                 </div>
               )}
@@ -188,7 +215,17 @@ function EmptyCard({
   );
 }
 
-function BookingRow({ b, past = false }: { b: MyBookingRow; past?: boolean }) {
+function BookingRow({
+  b,
+  past = false,
+  onCancel,
+  canceling = false,
+}: {
+  b: MyBookingRow;
+  past?: boolean;
+  onCancel?: () => void;
+  canceling?: boolean;
+}) {
   const paid = b.payment_status === 'paid';
   const cancelled = b.booking_status === 'cancelled';
   const venueLine =
@@ -251,10 +288,28 @@ function BookingRow({ b, past = false }: { b: MyBookingRow; past?: boolean }) {
             )}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-2">
           <p className="text-paper font-display font-bold text-lg">
             {formatCurrency(b.final_amount)}
           </p>
+          {onCancel && !cancelled && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onCancel();
+              }}
+              disabled={canceling}
+              className="flex items-center gap-1 text-red-300 hover:text-red-200 text-[10px] font-bold tracking-widest uppercase disabled:opacity-50"
+            >
+              {canceling ? (
+                <Loader2 size={10} className="animate-spin" />
+              ) : (
+                <X size={10} />
+              )}
+              Cancel
+            </button>
+          )}
         </div>
       </div>
     </Link>

@@ -128,6 +128,15 @@ export async function fetchMyBookings(): Promise<MyBookingRow[]> {
   return (data ?? []) as unknown as MyBookingRow[];
 }
 
+// Customer cancels their own future booking. Wraps the SECURITY DEFINER
+// RPC which checks ownership + booking state on the server.
+export async function cancelMyBooking(bookingId: string): Promise<void> {
+  const { error } = await supabase.rpc('customer_cancel_booking', {
+    p_booking_id: bookingId,
+  });
+  if (error) throw error;
+}
+
 // Available slots for a ground over a date range.
 export async function fetchAvailableSlots(
   groundId: string,
