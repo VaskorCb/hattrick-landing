@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Loader2, MapPin, SlidersHorizontal, X } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -13,9 +14,12 @@ import { cn } from '@/lib/utils';
 
 const GROUND_TYPES: GroundType[] = ['five_a_side', 'seven_a_side', 'futsal', 'full_size'];
 
-export default function TurfsBrowsePage() {
-  const [query, setQuery] = useState('');
-  const [city, setCity] = useState<string | null>(null);
+function TurfsBrowseInner() {
+  const search = useSearchParams();
+  const initialQ = search?.get('q') ?? '';
+  const initialCity = search?.get('city') ?? null;
+  const [query, setQuery] = useState(initialQ);
+  const [city, setCity] = useState<string | null>(initialCity);
   const [groundType, setGroundType] = useState<GroundType | null>(null);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -225,5 +229,19 @@ export default function TurfsBrowsePage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function TurfsBrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-ink-950 flex items-center justify-center">
+          <Loader2 size={20} className="animate-spin text-lime-400" />
+        </div>
+      }
+    >
+      <TurfsBrowseInner />
+    </Suspense>
   );
 }

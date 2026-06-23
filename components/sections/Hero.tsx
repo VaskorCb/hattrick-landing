@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Play, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Play, Search, ShieldCheck } from "lucide-react";
 import { Button } from "../Button";
 import { PhoneMockup, TabletMockup } from "../PhoneMockup";
 import { LiveBoardScreen } from "../LiveBoardScreen";
@@ -60,6 +61,25 @@ export function Hero() {
             <Button variant="ghost" size="lg">
               <Play size={18} /> Watch 2-min Demo
             </Button>
+          </motion.div>
+
+          {/* Secondary path for players (the customer audience). */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.55 }}
+            className="mt-6"
+          >
+            <Link
+              href="/turfs"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink-900/60 border border-ink-700/60 hover:border-lime-500/60 hover:bg-lime-500/5 transition-colors group"
+            >
+              <Search size={14} className="text-lime-400" />
+              <span className="text-sm text-ink-200">
+                Just want to play?{" "}
+                <span className="text-lime-400 font-bold group-hover:underline">Find a turf →</span>
+              </span>
+            </Link>
           </motion.div>
 
           <motion.div

@@ -2,6 +2,7 @@ import { BackgroundFx } from "@/components/BackgroundFx";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/sections/Hero";
+import { PlayerSearch } from "@/components/sections/PlayerSearch";
 import { LogosBar } from "@/components/sections/LogosBar";
 import { Stats } from "@/components/sections/Stats";
 import { Problem } from "@/components/sections/Problem";
@@ -18,6 +19,7 @@ export default function Home() {
       <Navbar />
       <main className="relative">
         <Hero />
+        <PlayerSearch />
         <LogosBar />
         <Stats />
         <Problem />
