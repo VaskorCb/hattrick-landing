@@ -8,7 +8,15 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/Button';
 import { AMENITIES, GROUND_TYPE_LABELS, amenityByKey } from '@/lib/amenities';
-import { fetchAvailableSlots, fetchGroundBySlugAndId } from '@/lib/queries';
+import {
+  fetchAvailableSlots,
+  fetchGroundBySlugAndId,
+  fetchRatingsMap,
+  fetchReviewsForGround,
+  type GroundRating,
+  type Review,
+} from '@/lib/queries';
+import { StarRating } from '@/components/portal/StarRating';
 import { formatCurrency, formatDateShort, formatTime, todayPlusLocal } from '@/lib/format';
 import type { GroundWithTenant, TimeSlot } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -27,6 +35,8 @@ export default function GroundDetailPage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [rating, setRating] = useState<GroundRating | null>(null);
 
   useEffect(() => {
     if (!tenantSlug || !groundId) return;
@@ -50,6 +60,15 @@ export default function GroundDetailPage() {
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false));
   }, [groundId, date]);
+
+  // Reviews + aggregate rating load once when the ground id resolves.
+  useEffect(() => {
+    if (!groundId) return;
+    fetchReviewsForGround(groundId).then(setReviews).catch(() => setReviews([]));
+    fetchRatingsMap([groundId])
+      .then((m) => setRating(m.get(groundId) ?? null))
+      .catch(() => setRating(null));
+  }, [groundId]);
 
   const photos = useMemo(() => {
     if (!ground) return [];
@@ -162,6 +181,17 @@ export default function GroundDetailPage() {
                 <h1 className="text-paper font-display font-bold text-4xl tracking-tight">
                   {ground.name}
                 </h1>
+                {rating && rating.review_count > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <StarRating value={rating.avg_rating} size={16} />
+                    <span className="text-paper text-sm font-bold">
+                      {rating.avg_rating.toFixed(1)}
+                    </span>
+                    <span className="text-ink-400 text-sm">
+                      ({rating.review_count} review{rating.review_count === 1 ? '' : 's'})
+                    </span>
+                  </div>
+                )}
                 <p className="text-ink-300 mt-1">{ground.tenant.name}</p>
                 {cityArea && (
                   <div className="flex items-center gap-1.5 mt-2 text-ink-400 text-sm">
@@ -197,6 +227,56 @@ export default function GroundDetailPage() {
                         >
                           <Icon size={14} className="text-lime-400" />
                           <span className="text-sm text-ink-200">{a.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {reviews.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <h2 className="text-paper font-display font-bold text-lg">
+                      Reviews
+                    </h2>
+                    {rating && (
+                      <span className="text-ink-400 text-sm">
+                        {rating.avg_rating.toFixed(1)} · {rating.review_count}{' '}
+                        review{rating.review_count === 1 ? '' : 's'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {reviews.slice(0, 8).map((r) => {
+                      const name = r.reviewer?.full_name ?? 'Player';
+                      const initial = name.slice(0, 1).toUpperCase();
+                      return (
+                        <div
+                          key={r.id}
+                          className="bg-ink-900 border border-ink-700/60 rounded-2xl p-4"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-lime-500/20 border border-lime-500/30 flex items-center justify-center text-lime-300 font-bold text-sm">
+                              {initial}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-paper font-bold text-sm">{name}</p>
+                              <p className="text-ink-500 text-xs">
+                                {new Date(r.created_at).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            </div>
+                            <StarRating value={r.rating} size={12} />
+                          </div>
+                          {r.comment && (
+                            <p className="text-ink-300 text-sm leading-relaxed pl-11">
+                              {r.comment}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
