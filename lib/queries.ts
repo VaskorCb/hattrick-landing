@@ -137,6 +137,71 @@ export async function cancelMyBooking(bookingId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ---- Reviews ---------------------------------------------------------------
+
+export interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_id: string;
+  // Joined: customer name (only if profile visible — RLS)
+  reviewer?: { full_name: string | null } | null;
+}
+
+export interface GroundRating {
+  ground_id: string;
+  avg_rating: number;
+  review_count: number;
+}
+
+export async function fetchReviewsForGround(groundId: string): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('id, rating, comment, created_at, user_id, reviewer:profiles!user_id(full_name)')
+    .eq('ground_id', groundId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as Review[];
+}
+
+export async function fetchRatingsMap(groundIds: string[]): Promise<Map<string, GroundRating>> {
+  if (groundIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('ground_ratings')
+    .select('*')
+    .in('ground_id', groundIds);
+  if (error) throw error;
+  const map = new Map<string, GroundRating>();
+  (data ?? []).forEach((r: GroundRating) => map.set(r.ground_id, r));
+  return map;
+}
+
+export async function submitReview(
+  bookingId: string,
+  rating: number,
+  comment: string | null
+): Promise<void> {
+  const { error } = await supabase.rpc('submit_review', {
+    p_booking_id: bookingId,
+    p_rating: rating,
+    p_comment: comment,
+  });
+  if (error) throw error;
+}
+
+// Returns the existing review for a booking (if any) — used to prefill the
+// edit form on /account.
+export async function fetchMyReviewForBooking(bookingId: string): Promise<Review | null> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('id, rating, comment, created_at, user_id')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Review | null) ?? null;
+}
+
 // Available slots for a ground over a date range.
 export async function fetchAvailableSlots(
   groundId: string,
