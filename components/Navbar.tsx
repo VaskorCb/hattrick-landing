@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, User } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./Button";
+import { useSession } from "@/lib/useSession";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -17,6 +19,7 @@ const navLinks = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { session } = useSession();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -56,9 +59,22 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <button className="text-sm text-ink-300 hover:text-paper transition-colors">
-              Sign In
-            </button>
+            {session ? (
+              <Link
+                href="/account"
+                className="flex items-center gap-1.5 text-sm text-ink-300 hover:text-lime-400 transition-colors"
+              >
+                <User size={14} />
+                My account
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm text-ink-300 hover:text-paper transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
             <Button size="sm">
               Start Free Trial
               <ArrowRight size={16} />
@@ -117,7 +133,19 @@ export function Navbar() {
                 </motion.a>
               ))}
               <div className="pt-6 flex flex-col gap-3">
-                <Button variant="secondary" size="lg">Sign In</Button>
+                {session ? (
+                  <Link href="/account" onClick={() => setMobileOpen(false)}>
+                    <Button variant="secondary" size="lg" className="w-full justify-center">
+                      <User size={16} /> My account
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/login" onClick={() => setMobileOpen(false)}>
+                    <Button variant="secondary" size="lg" className="w-full justify-center">
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
                 <Button size="lg">
                   Start Free Trial <ArrowRight size={18} />
                 </Button>
