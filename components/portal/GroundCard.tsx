@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import type { GroundWithTenant } from '@/lib/types';
 import { formatCurrency } from '@/lib/format';
 import { GROUND_TYPE_LABELS, amenityByKey } from '@/lib/amenities';
@@ -10,10 +10,14 @@ export function GroundCard({
   ground,
   rating,
   reviewCount,
+  isFavorite = false,
+  onToggleFavorite,
 }: {
   ground: GroundWithTenant;
   rating?: number;
   reviewCount?: number;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }) {
   const href = `/turfs/${ground.tenant.slug}/${ground.id}`;
   const cover = ground.photos?.[0] ?? ground.image_url ?? null;
@@ -46,6 +50,22 @@ export function GroundCard({
             {GROUND_TYPE_LABELS[ground.ground_type] ?? ground.ground_type}
           </span>
         </div>
+        {onToggleFavorite && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleFavorite();
+            }}
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            className="absolute bottom-3 left-3 w-9 h-9 rounded-full bg-ink-950/80 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform"
+          >
+            <Heart
+              size={16}
+              className={isFavorite ? 'text-red-400 fill-red-400' : 'text-paper'}
+            />
+          </button>
+        )}
         {rating != null && reviewCount && reviewCount > 0 && (
           <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-ink-950/80 backdrop-blur">
             <StarRating value={rating} size={11} />

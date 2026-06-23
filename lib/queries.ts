@@ -231,8 +231,10 @@ export async function fetchMyFavoriteGrounds(): Promise<GroundWithTenant[]> {
       `ground:grounds!inner(*, tenant:tenants!inner(id, name, slug, address, city, area))`
     );
   if (error) throw error;
+  // Supabase infers the embedded shape as an array but for !inner with a FK,
+  // it's always a single row — cast through unknown.
   return (data ?? [])
-    .map((r: { ground: GroundWithTenant }) => r.ground)
+    .map((r) => (r as unknown as { ground: GroundWithTenant }).ground)
     .filter(Boolean);
 }
 

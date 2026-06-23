@@ -8,7 +8,16 @@ import { Footer } from '@/components/Footer';
 import { SearchBar } from '@/components/portal/SearchBar';
 import { GroundCard } from '@/components/portal/GroundCard';
 import { AMENITIES, GROUND_TYPE_LABELS } from '@/lib/amenities';
-import { fetchCities, fetchGroundsForBrowse, fetchRatingsMap, type GroundRating } from '@/lib/queries';
+import {
+  addFavorite,
+  fetchCities,
+  fetchGroundsForBrowse,
+  fetchMyFavoriteIds,
+  fetchRatingsMap,
+  removeFavorite,
+  type GroundRating,
+} from '@/lib/queries';
+import { useSession } from '@/lib/useSession';
 import type { GroundType, GroundWithTenant } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +35,9 @@ function TurfsBrowseInner() {
 
   const [grounds, setGrounds] = useState<GroundWithTenant[] | null>(null);
   const [ratings, setRatings] = useState<Map<string, GroundRating>>(new Map());
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [cities, setCities] = useState<string[]>([]);
+  const { session } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +47,43 @@ function TurfsBrowseInner() {
       .then(setCities)
       .catch(() => setCities([]));
   }, []);
+
+  // Favorites — only when signed in.
+  useEffect(() => {
+    if (!session) {
+      setFavorites(new Set());
+      return;
+    }
+    fetchMyFavoriteIds().then(setFavorites).catch(() => setFavorites(new Set()));
+  }, [session]);
+
+  const toggleFavorite = async (groundId: string) => {
+    if (!session) {
+      // Not signed in — bounce to login. Could also stash an intent in storage.
+      window.location.href = '/login';
+      return;
+    }
+    const wasFav = favorites.has(groundId);
+    // Optimistic update
+    setFavorites((cur) => {
+      const next = new Set(cur);
+      if (wasFav) next.delete(groundId);
+      else next.add(groundId);
+      return next;
+    });
+    try {
+      if (wasFav) await removeFavorite(groundId);
+      else await addFavorite(groundId);
+    } catch {
+      // Revert on failure
+      setFavorites((cur) => {
+        const next = new Set(cur);
+        if (wasFav) next.add(groundId);
+        else next.delete(groundId);
+        return next;
+      });
+    }
+  };
 
   // Re-fetch grounds when filters change. Debounced minimally — Supabase is fast.
   useEffect(() => {
@@ -238,6 +286,8 @@ function TurfsBrowseInner() {
                     ground={g}
                     rating={r?.avg_rating}
                     reviewCount={r?.review_count}
+                    isFavorite={favorites.has(g.id)}
+                    onToggleFavorite={() => toggleFavorite(g.id)}
                   />
                 );
               })}
