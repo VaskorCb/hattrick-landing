@@ -10,9 +10,11 @@ import {
   LogOut,
   MapPin,
   ReceiptText,
+  Star,
   User,
   X,
 } from 'lucide-react';
+import { ReviewForm } from '@/components/portal/ReviewForm';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/Button';
@@ -155,7 +157,7 @@ export default function AccountPage() {
               ) : (
                 <div className="space-y-3">
                   {past.map((b) => (
-                    <BookingRow key={b.id} b={b} past />
+                    <BookingRow key={b.id} b={b} past reviewable />
                   ))}
                 </div>
               )}
@@ -218,14 +220,19 @@ function EmptyCard({
 function BookingRow({
   b,
   past = false,
+  reviewable = false,
   onCancel,
   canceling = false,
 }: {
   b: MyBookingRow;
   past?: boolean;
+  reviewable?: boolean;
   onCancel?: () => void;
   canceling?: boolean;
 }) {
+  const [showReview, setShowReview] = useState(false);
+  const canReview =
+    reviewable && b.booking_status !== 'cancelled' && b.booking_date < todayLocal();
   const paid = b.payment_status === 'paid';
   const cancelled = b.booking_status === 'cancelled';
   const venueLine =
@@ -234,13 +241,8 @@ function BookingRow({
       : null;
 
   return (
-    <Link
-      href={
-        b.ground
-          ? `/turfs/${b.ground.tenant.slug}/${b.ground.id}`
-          : '/turfs'
-      }
-      className={`block bg-ink-900 border rounded-2xl p-4 transition-colors hover:border-lime-500/40 ${
+    <div
+      className={`bg-ink-900 border rounded-2xl p-4 transition-colors ${
         cancelled
           ? 'border-red-500/30 opacity-70'
           : past
@@ -292,13 +294,18 @@ function BookingRow({
           <p className="text-paper font-display font-bold text-lg">
             {formatCurrency(b.final_amount)}
           </p>
+          {b.ground && (
+            <Link
+              href={`/turfs/${b.ground.tenant.slug}/${b.ground.id}`}
+              className="text-ink-400 hover:text-lime-400 text-[10px] font-bold tracking-widest uppercase"
+            >
+              View venue →
+            </Link>
+          )}
           {onCancel && !cancelled && (
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                onCancel();
-              }}
+              onClick={onCancel}
               disabled={canceling}
               className="flex items-center gap-1 text-red-300 hover:text-red-200 text-[10px] font-bold tracking-widest uppercase disabled:opacity-50"
             >
@@ -310,9 +317,26 @@ function BookingRow({
               Cancel
             </button>
           )}
+          {canReview && !showReview && (
+            <button
+              type="button"
+              onClick={() => setShowReview(true)}
+              className="flex items-center gap-1 text-lime-400 hover:text-lime-300 text-[10px] font-bold tracking-widest uppercase"
+            >
+              <Star size={10} />
+              Review
+            </button>
+          )}
         </div>
       </div>
-    </Link>
+
+      {showReview && (
+        <ReviewForm
+          bookingId={b.id}
+          onDone={() => setShowReview(false)}
+        />
+      )}
+    </div>
   );
 }
 
