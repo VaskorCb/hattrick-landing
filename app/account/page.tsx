@@ -20,7 +20,14 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/Button';
 import { useSession } from '@/lib/useSession';
 import { signOut } from '@/lib/auth';
-import { cancelMyBooking, fetchMyBookings, type MyBookingRow } from '@/lib/queries';
+import {
+  cancelMyBooking,
+  fetchMyBookings,
+  fetchMyFavoriteGrounds,
+  type MyBookingRow,
+} from '@/lib/queries';
+import { GroundCard } from '@/components/portal/GroundCard';
+import type { GroundWithTenant } from '@/lib/types';
 import { formatCurrency, formatDate, formatTime } from '@/lib/format';
 
 export default function AccountPage() {
@@ -28,6 +35,7 @@ export default function AccountPage() {
   const { session, loading: sessionLoading, user } = useSession();
 
   const [bookings, setBookings] = useState<MyBookingRow[] | null>(null);
+  const [favorites, setFavorites] = useState<GroundWithTenant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
@@ -62,7 +70,10 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    refreshBookings().finally(() => setLoading(false));
+    Promise.all([
+      refreshBookings(),
+      fetchMyFavoriteGrounds().then(setFavorites).catch(() => setFavorites([])),
+    ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -149,6 +160,21 @@ export default function AccountPage() {
                     />
                   ))}
                 </div>
+              )}
+
+              {favorites.length > 0 && (
+                <>
+                  <SectionHeading
+                    title={`Favorites (${favorites.length})`}
+                    hint="Grounds you saved"
+                    className="mt-10"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {favorites.map((g) => (
+                      <GroundCard key={g.id} ground={g} />
+                    ))}
+                  </div>
+                </>
               )}
 
               <SectionHeading title={`Past (${past.length})`} className="mt-10" />
