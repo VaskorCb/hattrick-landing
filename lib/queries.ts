@@ -96,6 +96,38 @@ export async function fetchGroundBySlugAndId(
   return row;
 }
 
+// My bookings — for the logged-in customer's /account page. RLS guarantees
+// only rows where user_id = auth.uid() come back.
+export interface MyBookingRow {
+  id: string;
+  booking_number: string;
+  booking_date: string;
+  final_amount: number;
+  booking_status: string;
+  payment_status: string;
+  notes: string | null;
+  created_at: string;
+  ground: {
+    id: string;
+    name: string;
+    tenant: { name: string; slug: string; city: string | null; area: string | null };
+  } | null;
+  time_slot: { start_time: string; end_time: string } | null;
+}
+
+export async function fetchMyBookings(): Promise<MyBookingRow[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      `id, booking_number, booking_date, final_amount, booking_status, payment_status, notes, created_at,
+       ground:grounds(id, name, tenant:tenants(name, slug, city, area)),
+       time_slot:time_slots(start_time, end_time)`
+    )
+    .order('booking_date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as MyBookingRow[];
+}
+
 // Available slots for a ground over a date range.
 export async function fetchAvailableSlots(
   groundId: string,
