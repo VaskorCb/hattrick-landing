@@ -202,6 +202,40 @@ export async function fetchMyReviewForBooking(bookingId: string): Promise<Review
   return (data as Review | null) ?? null;
 }
 
+// ---- Favorites -------------------------------------------------------------
+
+export async function fetchMyFavoriteIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('favorites').select('ground_id');
+  if (error) throw error;
+  return new Set((data ?? []).map((r: { ground_id: string }) => r.ground_id));
+}
+
+export async function addFavorite(groundId: string): Promise<void> {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user?.user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('favorites')
+    .insert({ user_id: user.user.id, ground_id: groundId });
+  if (error && error.code !== '23505') throw error; // ignore duplicate
+}
+
+export async function removeFavorite(groundId: string): Promise<void> {
+  const { error } = await supabase.from('favorites').delete().eq('ground_id', groundId);
+  if (error) throw error;
+}
+
+export async function fetchMyFavoriteGrounds(): Promise<GroundWithTenant[]> {
+  const { data, error } = await supabase
+    .from('favorites')
+    .select(
+      `ground:grounds!inner(*, tenant:tenants!inner(id, name, slug, address, city, area))`
+    );
+  if (error) throw error;
+  return (data ?? [])
+    .map((r: { ground: GroundWithTenant }) => r.ground)
+    .filter(Boolean);
+}
+
 // Available slots for a ground over a date range.
 export async function fetchAvailableSlots(
   groundId: string,
